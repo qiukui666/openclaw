@@ -1,0 +1,103 @@
+name: Build iOS TrollStore Shell IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bot/ios-ipa-artifact
+    paths:
+      - '.github/workflows/ios-trollstore-shell-ipa.yml'
+      - 'apps/ios/project.trollstore-shell.yml'
+      - 'apps/ios/ShellSources/**'
+      - 'apps/ios/Sources/Assets.xcassets/**'
+      - 'apps/ios/Signing.xcconfig'
+      - 'apps/ios/Config/Version.xcconfig'
+      - 'scripts/ios-write-version-xcconfig.sh'
+      - 'package.json'
+
+jobs:
+  build-ios-trollstore-shell-ipa:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Select Xcode 26.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.1.app
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen only
+        run: brew install xcodegen
+
+      - name: Prepare version config
+        run: ./scripts/ios-write-version-xcconfig.sh
+
+      - name: Generate TrollStore Shell iOS project
+        run: |
+          cd apps/ios
+          cp project.trollstore-shell.yml project.generated.trollstore-shell.yml
+          xcodegen generate --spec project.generated.trollstore-shell.yml
+
+      - name: Build TrollStore Shell unsigned iphoneos app
+        run: |
+          cd apps/ios
+          xcodebuild \
+            -project OpenClaw.xcodeproj \
+            -scheme OpenClaw \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData-TrollStoreShell \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            clean build
+
+      - name: Locate app bundle
+        id: locate
+        run: |
+          APP_PATH=$(find apps/ios/build/DerivedData-TrollStoreShell/Build/Products -type d -name 'OpenClaw.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo 'OpenClaw.app not found' >&2
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found app: $APP_PATH"
+
+      - name: Strip signatures and inspect final bundle
+        run: |
+          APP_PATH='${{ steps.locate.outputs.app_path }}'
+          rm -f "$APP_PATH/embedded.mobileprovision"
+          find "$APP_PATH" -name '_CodeSignature' -type d -prune -exec rm -rf {} + || true
+          find "$APP_PATH" -name 'CodeResources' -type f -delete || true
+          echo '--- Final Info.plist ---'
+          /usr/libexec/PlistBuddy -c 'Print' "$APP_PATH/Info.plist" || true
+          echo '--- Final bundle tree ---'
+          find "$APP_PATH" -maxdepth 3 \( -type d -o -type f \) | sed 's#^#  #' | sort
+
+      - name: Package TrollStore Shell IPA
+        run: |
+          rm -rf out-trollstore-shell
+          mkdir -p out-trollstore-shell/Payload
+          cp -R "${{ steps.locate.outputs.app_path }}" out-trollstore-shell/Payload/OpenClaw.app
+          cd out-trollstore-shell
+          /usr/bin/zip -qry ../OpenClaw-trollstore-shell-iphoneos.ipa Payload
+          cd ..
+          ditto -c -k --sequesterRsrc --keepParent "${{ steps.locate.outputs.app_path }}" OpenClaw-trollstore-shell-app-bundle.zip
+
+      - name: Upload TrollStore Shell IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-ios-trollstore-shell-ipa
+          path: |
+            OpenClaw-trollstore-shell-iphoneos.ipa
+            OpenClaw-trollstore-shell-app-bundle.zip
+          if-no-files-found: error
