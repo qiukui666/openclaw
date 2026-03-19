@@ -29,8 +29,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          TMP_TLON_DIR="$RUNNER_TEMP/tlon-disabled"
+          rm -rf "$TMP_TLON_DIR"
           if [ -d extensions/tlon ]; then
-            mv extensions/tlon extensions/_tlon.disabled
+            mv extensions/tlon "$TMP_TLON_DIR"
           fi
           pnpm install --frozen-lockfile
 
