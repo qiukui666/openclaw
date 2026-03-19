@@ -30,8 +30,8 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Install xcodegen
-        run: brew install xcodegen
+      - name: Install iOS build tools
+        run: brew install xcodegen swiftlint swiftformat
 
       - name: Install dependencies
         run: |
