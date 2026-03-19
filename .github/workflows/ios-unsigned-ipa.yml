@@ -1,0 +1,89 @@
+name: Build iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - bot/ios-ipa-artifact
+
+jobs:
+  build-ios-ipa:
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate iOS project
+        run: |
+          ./scripts/ios-write-version-xcconfig.sh
+          OPENCLAW_IOS_BUNDLE_ID_BASE=ai.openclaw.ios.gha \
+          OPENCLAW_IOS_SHARE_BUNDLE_ID=ai.openclaw.ios.gha.share \
+          OPENCLAW_IOS_ACTIVITY_WIDGET_BUNDLE_ID=ai.openclaw.ios.gha.activitywidget \
+          OPENCLAW_IOS_WATCH_APP_BUNDLE_ID=ai.openclaw.ios.gha.watchkitapp \
+          OPENCLAW_IOS_WATCH_EXTENSION_BUNDLE_ID=ai.openclaw.ios.gha.watchkitapp.extension \
+          OPENCLAW_IOS_CODE_SIGN_STYLE=Automatic \
+          ./scripts/ios-configure-signing.sh || true
+          cd apps/ios
+          xcodegen generate
+
+      - name: Build unsigned iphoneos app
+        run: |
+          cd apps/ios
+          xcodebuild \
+            -project OpenClaw.xcodeproj \
+            -scheme OpenClaw \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Locate app bundle
+        id: locate
+        run: |
+          APP_PATH=$(find apps/ios/build/DerivedData/Build/Products -type d -name 'OpenClaw.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo 'OpenClaw.app not found' >&2
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found app: $APP_PATH"
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p out/Payload
+          cp -R "${{ steps.locate.outputs.app_path }}" out/Payload/OpenClaw.app
+          cd out
+          /usr/bin/zip -qry ../OpenClaw-unsigned-iphoneos.ipa Payload
+          cd ..
+          ditto -c -k --sequesterRsrc --keepParent "${{ steps.locate.outputs.app_path }}" OpenClaw-app-bundle.zip
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-ios-unsigned-ipa
+          path: |
+            OpenClaw-unsigned-iphoneos.ipa
+            OpenClaw-app-bundle.zip
+          if-no-files-found: error
