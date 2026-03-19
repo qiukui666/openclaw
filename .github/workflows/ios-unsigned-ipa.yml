@@ -34,9 +34,9 @@ jobs:
           if [ -d extensions/tlon ]; then
             mv extensions/tlon "$TMP_TLON_DIR"
           fi
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
-          git config --global url."https://github.com/".insteadOf https://git@github.com:
+          git config --global --add url."https://github.com/".insteadOf git@github.com:
+          git config --global --add url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://github.com/".insteadOf https://git@github.com:
           pnpm install --frozen-lockfile
 
       - name: Generate iOS project
