@@ -54,7 +54,9 @@ final class OpenClawAppDelegate: NSObject, UIApplicationDelegate, @preconcurrenc
     {
         self.registerBackgroundWakeRefreshTask()
         UNUserNotificationCenter.current().delegate = self
+        #if !TROLLSTORE_LITE
         application.registerForRemoteNotifications()
+        #endif
         return true
     }
 
@@ -410,9 +412,11 @@ enum WatchPromptNotificationBridge {
             if self.isAuthorizationStatusAllowed(updatedStatus) {
                 // Refresh APNs registration immediately after the first permission grant so the
                 // gateway can receive a push registration without requiring an app relaunch.
+                #if !TROLLSTORE_LITE
                 await MainActor.run {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
+                #endif
             }
             return self.isAuthorizationStatusAllowed(updatedStatus)
         case .denied:

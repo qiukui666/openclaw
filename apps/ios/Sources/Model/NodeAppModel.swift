@@ -1740,7 +1740,9 @@ extension NodeAppModel {
         self.operatorGatewayTask = nil
         self.voiceWakeSyncTask?.cancel()
         self.voiceWakeSyncTask = nil
+        #if !TROLLSTORE_LITE
         LiveActivityManager.shared.handleDisconnect()
+        #endif
         self.gatewayHealthMonitor.stop()
         Task {
             await self.operatorGateway.disconnect()
@@ -1777,7 +1779,9 @@ private extension NodeAppModel {
         self.operatorConnected = false
         self.voiceWakeSyncTask?.cancel()
         self.voiceWakeSyncTask = nil
+        #if !TROLLSTORE_LITE
         LiveActivityManager.shared.handleDisconnect()
+        #endif
         self.gatewayDefaultAgentId = nil
         self.gatewayAgents = []
         self.selectedAgentId = GatewaySettingsStore.loadGatewaySelectedAgentId(stableID: stableID)
@@ -1860,9 +1864,11 @@ private extension NodeAppModel {
                             await self.refreshBrandingFromGateway()
                             await self.refreshAgentsFromGateway()
                             await self.refreshShareRouteFromGateway()
+                            #if !TROLLSTORE_LITE
                             await self.registerAPNsTokenIfNeeded()
-                            await self.startVoiceWakeSync()
                             await MainActor.run { LiveActivityManager.shared.handleReconnect() }
+                            #endif
+                            await self.startVoiceWakeSync()
                             await MainActor.run { self.startGatewayHealthMonitor() }
                         },
                         onDisconnected: { [weak self] reason in
@@ -1870,7 +1876,9 @@ private extension NodeAppModel {
                             await MainActor.run {
                                 self.operatorConnected = false
                                 self.talkMode.updateGatewayConnected(false)
+                                #if !TROLLSTORE_LITE
                                 LiveActivityManager.shared.handleDisconnect()
+                                #endif
                             }
                             GatewayDiagnostics.log("operator gateway disconnected reason=\(reason)")
                             await MainActor.run { self.stopGatewayHealthMonitor() }
@@ -1936,6 +1944,7 @@ private extension NodeAppModel {
                     self.gatewayStatusText = (attempt == 0) ? "Connecting…" : "Reconnecting…"
                     self.gatewayServerName = nil
                     self.gatewayRemoteAddress = nil
+                    #if !TROLLSTORE_LITE
                     let liveActivity = LiveActivityManager.shared
                     if liveActivity.isActive {
                         liveActivity.handleConnecting()
@@ -1944,6 +1953,7 @@ private extension NodeAppModel {
                             agentName: self.selectedAgentId ?? "main",
                             sessionKey: self.mainSessionKey)
                     }
+                    #endif
                 }
 
                 do {
@@ -2410,6 +2420,9 @@ extension NodeAppModel {
     }
 
     func handleSilentPushWake(_ userInfo: [AnyHashable: Any]) async -> Bool {
+        #if TROLLSTORE_LITE
+        return false
+        #else
         let wakeId = Self.makePushWakeAttemptID()
         guard Self.isSilentPushPayload(userInfo) else {
             self.pushWakeLogger.info("Ignored APNs payload wakeId=\(wakeId, privacy: .public): not silent push")
@@ -2430,6 +2443,7 @@ extension NodeAppModel {
             + "durationMs=\(result.durationMs)"
         self.pushWakeLogger.info("\(outcomeMessage, privacy: .public)")
         return result.applied
+        #endif
     }
 
     func handleBackgroundRefreshWake(trigger: String = "bg_app_refresh") async -> Bool {
@@ -2491,6 +2505,9 @@ extension NodeAppModel {
     }
 
     func updateAPNsDeviceToken(_ tokenData: Data) {
+        #if TROLLSTORE_LITE
+        return
+        #else
         let tokenHex = tokenData.map { String(format: "%02x", $0) }.joined()
         let trimmed = tokenHex.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -2499,6 +2516,7 @@ extension NodeAppModel {
         Task { [weak self] in
             await self?.registerAPNsTokenIfNeeded()
         }
+        #endif
     }
 
     private func registerAPNsTokenIfNeeded() async {
