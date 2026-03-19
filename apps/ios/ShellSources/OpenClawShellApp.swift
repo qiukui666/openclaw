@@ -48,7 +48,8 @@ private struct ShellScaffold<Content: View>: View {
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(title)
-                                .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                                .font(.system(.largeTitle, design: .rounded))
+                                .fontWeight(.bold)
                                 .foregroundStyle(.white)
                             Text(subtitle)
                                 .font(.system(.subheadline, design: .rounded))
