@@ -25,7 +25,8 @@ private struct UltraliteRootView: View {
                     .padding(.bottom, 4)
 
                 Text("OpenClaw Ultralite")
-                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .font(.system(.title2, design: .rounded))
+                    .fontWeight(.bold)
                     .foregroundStyle(.white)
 
                 Text("TrollStore minimal shell build")
