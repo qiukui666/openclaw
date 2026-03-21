@@ -11,16 +11,17 @@ struct OpenClawShellApp: App {
 
 private struct ShellRootView: View {
     @State private var selectedTab: Int = 0
+    @State private var lastValidationAt: Date? = nil
 
     var body: some View {
         TabView(selection: self.$selectedTab) {
-            ShellHomeView {
+            ShellHomeView(onPrimaryAction: {
                 self.selectedTab = 1
-            }
+            }, lastValidationAt: self.$lastValidationAt)
                 .tabItem { Label("概览", systemImage: "house.fill") }
                 .tag(0)
 
-            ShellSessionsView()
+            ShellSessionsView(lastValidationAt: self.lastValidationAt)
                 .tabItem { Label("会话", systemImage: "bubble.left.and.text.bubble.right.fill") }
                 .tag(1)
 
@@ -270,7 +271,7 @@ private struct ShellSettingRow: View {
 
 private struct ShellHomeView: View {
     let onPrimaryAction: () -> Void
-    @State private var lastValidationAt: Date? = nil
+    @Binding var lastValidationAt: Date?
 
     private var validationStampText: String {
         guard let lastValidationAt else { return "尚未记录" }
@@ -359,6 +360,15 @@ private struct ShellHomeView: View {
 }
 
 private struct ShellSessionsView: View {
+    let lastValidationAt: Date?
+
+    private var validationStampText: String {
+        guard let lastValidationAt else { return "尚未记录" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: lastValidationAt)
+    }
+
     private let rows: [ShellSessionItem] = [
         ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
         ShellSessionItem(id: "local", title: "本地会话", subtitle: "保留为安全静态样式，不发起真实连接。", badge: "静态", symbol: "desktopcomputer"),
@@ -384,6 +394,19 @@ private struct ShellSessionsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "验收状态", detail: "跨 Tab 可见")
+                HStack(spacing: 12) {
+                    Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.88))
+                    Spacer(minLength: 0)
+                    Text(self.validationStampText)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.cyan)
                 }
             }
 
