@@ -214,6 +214,14 @@ private struct ShellSessionItem: Identifiable {
 
 private struct ShellSessionDetailPlaceholderView: View {
     let session: ShellSessionItem
+    let lastValidationAt: Date?
+
+    private var validationStampText: String {
+        guard let lastValidationAt else { return "尚未记录" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: lastValidationAt)
+    }
 
     var body: some View {
         ZStack {
@@ -241,6 +249,19 @@ private struct ShellSessionDetailPlaceholderView: View {
                         }
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(.white.opacity(0.82))
+                    }
+
+                    ShellCard {
+                        ShellSectionTitle(title: "主路径验收链路", detail: "详情页可见")
+                        HStack(spacing: 12) {
+                            Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
+                                .font(.system(.footnote, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.88))
+                            Spacer(minLength: 0)
+                            Text(self.validationStampText)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.cyan)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -384,7 +405,7 @@ private struct ShellSessionsView: View {
                 ShellSectionTitle(title: "最近入口", detail: "只读")
                 VStack(spacing: 12) {
                     ForEach(self.rows) { row in
-                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row)) {
+                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt)) {
                             ShellSessionRow(
                                 title: row.title,
                                 subtitle: row.subtitle,
