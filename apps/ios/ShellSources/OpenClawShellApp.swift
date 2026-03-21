@@ -162,6 +162,7 @@ private struct ShellSessionRow: View {
     let subtitle: String
     let badge: String
     let symbol: String
+    let showsDisclosure: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -189,9 +190,65 @@ private struct ShellSessionRow: View {
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
             }
+
+            if self.showsDisclosure {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .padding(.top, 6)
+            }
         }
         .padding(14)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct ShellSessionItem: Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let badge: String
+    let symbol: String
+}
+
+private struct ShellSessionDetailPlaceholderView: View {
+    let session: ShellSessionItem
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.black, Color(red: 0.07, green: 0.09, blue: 0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    ShellCard {
+                        ShellSectionTitle(title: session.title, detail: "只读占位")
+                        Text("这是会话详情占位视图。当前版本仅验证前台导航链路与页面稳定性，不发起网络请求，不连接网关，不启用后台能力。")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.76))
+                    }
+
+                    ShellCard {
+                        ShellSectionTitle(title: "会话元信息", detail: "静态")
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("标记：\(session.badge)", systemImage: "tag.fill")
+                            Label("图标：\(session.symbol)", systemImage: "sparkles")
+                            Label("说明：\(session.subtitle)", systemImage: "text.alignleft")
+                        }
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.82))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .padding(.bottom, 24)
+            }
+        }
+        .navigationTitle("会话详情")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -278,10 +335,10 @@ private struct ShellHomeView: View {
 }
 
 private struct ShellSessionsView: View {
-    private let rows: [(String, String, String, String)] = [
-        ("老板", "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", "主会话", "person.crop.circle.fill"),
-        ("本地会话", "保留为安全静态样式，不发起真实连接。", "静态", "desktopcomputer"),
-        ("最近任务", "后续可演化为任务 / 运行 / 工具结果入口。", "预留", "hammer.fill")
+    private let rows: [ShellSessionItem] = [
+        ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
+        ShellSessionItem(id: "local", title: "本地会话", subtitle: "保留为安全静态样式，不发起真实连接。", badge: "静态", symbol: "desktopcomputer"),
+        ShellSessionItem(id: "recent-tasks", title: "最近任务", subtitle: "后续可演化为任务 / 运行 / 工具结果入口。", badge: "预留", symbol: "hammer.fill")
     ]
 
     var body: some View {
@@ -292,8 +349,16 @@ private struct ShellSessionsView: View {
             ShellCard {
                 ShellSectionTitle(title: "最近入口", detail: "只读")
                 VStack(spacing: 12) {
-                    ForEach(Array(self.rows.enumerated()), id: \.offset) { _, row in
-                        ShellSessionRow(title: row.0, subtitle: row.1, badge: row.2, symbol: row.3)
+                    ForEach(self.rows) { row in
+                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row)) {
+                            ShellSessionRow(
+                                title: row.title,
+                                subtitle: row.subtitle,
+                                badge: row.badge,
+                                symbol: row.symbol,
+                                showsDisclosure: true)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
