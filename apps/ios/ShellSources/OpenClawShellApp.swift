@@ -252,8 +252,7 @@ private struct ShellHomeView: View {
                 Button(action: self.onPrimaryAction) {
                     HStack {
                         Label("进入会话骨架", systemImage: "arrow.right.circle.fill")
-                            .font(.system(.body, design: .rounded))
-                            .bold()
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14)
