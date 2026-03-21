@@ -1,5 +1,32 @@
 import SwiftUI
 
+private func shellValidationStampText(_ date: Date?) -> String {
+    guard let date else { return "尚未记录" }
+
+    let absoluteFormatter = DateFormatter()
+    absoluteFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+    let relativeFormatter = RelativeDateTimeFormatter()
+    relativeFormatter.unitsStyle = .short
+    relativeFormatter.locale = Locale(identifier: "zh_CN")
+
+    let relativeText = relativeFormatter.localizedString(for: date, relativeTo: Date())
+    let absoluteText = absoluteFormatter.string(from: date)
+    return "\(relativeText) · \(absoluteText)"
+}
+
+private struct ShellValidationStampText: View {
+    let date: Date?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            Text(shellValidationStampText(self.date))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.cyan)
+        }
+    }
+}
+
 @main
 struct OpenClawShellApp: App {
     var body: some Scene {
@@ -216,13 +243,6 @@ private struct ShellSessionDetailPlaceholderView: View {
     let session: ShellSessionItem
     let lastValidationAt: Date?
 
-    private var validationStampText: String {
-        guard let lastValidationAt else { return "尚未记录" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.string(from: lastValidationAt)
-    }
-
     var body: some View {
         ZStack {
             LinearGradient(
@@ -258,9 +278,7 @@ private struct ShellSessionDetailPlaceholderView: View {
                                 .font(.system(.footnote, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.88))
                             Spacer(minLength: 0)
-                            Text(self.validationStampText)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.cyan)
+                            ShellValidationStampText(date: self.lastValidationAt)
                         }
                     }
                 }
@@ -293,13 +311,6 @@ private struct ShellSettingRow: View {
 private struct ShellHomeView: View {
     let onPrimaryAction: () -> Void
     @Binding var lastValidationAt: Date?
-
-    private var validationStampText: String {
-        guard let lastValidationAt else { return "尚未记录" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.string(from: lastValidationAt)
-    }
 
     var body: some View {
         ShellScaffold(
@@ -364,9 +375,7 @@ private struct ShellHomeView: View {
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(.white.opacity(0.9))
                     Spacer(minLength: 0)
-                    Text(self.validationStampText)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.cyan)
+                    ShellValidationStampText(date: self.lastValidationAt)
                 }
             }
 
@@ -382,13 +391,6 @@ private struct ShellHomeView: View {
 
 private struct ShellSessionsView: View {
     let lastValidationAt: Date?
-
-    private var validationStampText: String {
-        guard let lastValidationAt else { return "尚未记录" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.string(from: lastValidationAt)
-    }
 
     private let rows: [ShellSessionItem] = [
         ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
@@ -425,9 +427,7 @@ private struct ShellSessionsView: View {
                         .font(.system(.footnote, design: .rounded))
                         .foregroundStyle(.white.opacity(0.88))
                     Spacer(minLength: 0)
-                    Text(self.validationStampText)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.cyan)
+                    ShellValidationStampText(date: self.lastValidationAt)
                 }
             }
 
