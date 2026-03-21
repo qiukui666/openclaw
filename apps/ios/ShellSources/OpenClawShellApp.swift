@@ -270,6 +270,14 @@ private struct ShellSettingRow: View {
 
 private struct ShellHomeView: View {
     let onPrimaryAction: () -> Void
+    @State private var lastValidationAt: Date? = nil
+
+    private var validationStampText: String {
+        guard let lastValidationAt else { return "尚未记录" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: lastValidationAt)
+    }
 
     var body: some View {
         ShellScaffold(
@@ -306,7 +314,10 @@ private struct ShellHomeView: View {
 
             ShellCard {
                 ShellSectionTitle(title: "主操作", detail: "可点击")
-                Button(action: self.onPrimaryAction) {
+                Button(action: {
+                    self.lastValidationAt = Date()
+                    self.onPrimaryAction()
+                }) {
                     HStack {
                         Label("进入会话骨架", systemImage: "arrow.right.circle.fill")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -322,6 +333,19 @@ private struct ShellHomeView: View {
                 Text("点击后切换到“会话”页，验证主路径点击与标签切换交互。")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "本地验收打点", detail: "新增")
+                HStack(spacing: 12) {
+                    Label("最近一次主路径点击", systemImage: "checkmark.seal.fill")
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.9))
+                    Spacer(minLength: 0)
+                    Text(self.validationStampText)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.cyan)
+                }
             }
 
             ShellCard {
