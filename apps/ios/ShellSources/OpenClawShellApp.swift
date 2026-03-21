@@ -14,7 +14,9 @@ private struct ShellRootView: View {
 
     var body: some View {
         TabView(selection: self.$selectedTab) {
-            ShellHomeView()
+            ShellHomeView {
+                self.selectedTab = 1
+            }
                 .tabItem { Label("概览", systemImage: "house.fill") }
                 .tag(0)
 
@@ -210,6 +212,8 @@ private struct ShellSettingRow: View {
 }
 
 private struct ShellHomeView: View {
+    let onPrimaryAction: () -> Void
+
     var body: some View {
         ShellScaffold(
             title: "OpenClaw",
@@ -241,6 +245,27 @@ private struct ShellHomeView: View {
                 }
                 .font(.system(.footnote, design: .rounded))
                 .foregroundStyle(.white.opacity(0.9))
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "主操作", detail: "可点击")
+                Button(action: self.onPrimaryAction) {
+                    HStack {
+                        Label("进入会话骨架", systemImage: "arrow.right.circle.fill")
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.semibold)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.black)
+                    .background(.cyan, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Text("点击后切换到“会话”页，验证主路径点击与标签切换交互。")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
             }
 
             ShellCard {
