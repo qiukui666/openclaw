@@ -27,6 +27,24 @@ private struct ShellValidationStampText: View {
     }
 }
 
+private struct ShellValidationStatusPill: View {
+    let date: Date?
+
+    var body: some View {
+        let isReady = (self.date != nil)
+        let title = isReady ? "状态：已打点" : "状态：未打点"
+        let tint: Color = isReady ? .green : .orange
+
+        return Text(title)
+            .font(.system(.caption2, design: .rounded))
+            .fontWeight(.bold)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.16), in: Capsule())
+    }
+}
+
 @main
 struct OpenClawShellApp: App {
     var body: some Scene {
@@ -273,11 +291,14 @@ private struct ShellSessionDetailPlaceholderView: View {
 
                     ShellCard {
                         ShellSectionTitle(title: "主路径验收链路", detail: "详情页可见")
-                        HStack(spacing: 12) {
-                            Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
-                                .font(.system(.footnote, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.88))
-                            Spacer(minLength: 0)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 12) {
+                                Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
+                                    .font(.system(.footnote, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.88))
+                                Spacer(minLength: 0)
+                                ShellValidationStatusPill(date: self.lastValidationAt)
+                            }
                             ShellValidationStampText(date: self.lastValidationAt)
                         }
                     }
@@ -370,11 +391,14 @@ private struct ShellHomeView: View {
 
             ShellCard {
                 ShellSectionTitle(title: "本地验收打点", detail: "新增")
-                HStack(spacing: 12) {
-                    Label("最近一次主路径点击", systemImage: "checkmark.seal.fill")
-                        .font(.system(.footnote, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.9))
-                    Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        Label("最近一次主路径点击", systemImage: "checkmark.seal.fill")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.9))
+                        Spacer(minLength: 0)
+                        ShellValidationStatusPill(date: self.lastValidationAt)
+                    }
                     ShellValidationStampText(date: self.lastValidationAt)
                 }
             }
@@ -422,11 +446,14 @@ private struct ShellSessionsView: View {
 
             ShellCard {
                 ShellSectionTitle(title: "验收状态", detail: "跨 Tab 可见")
-                HStack(spacing: 12) {
-                    Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
-                        .font(.system(.footnote, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.88))
-                    Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        Label("最近一次主路径点击", systemImage: "clock.badge.checkmark")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.88))
+                        Spacer(minLength: 0)
+                        ShellValidationStatusPill(date: self.lastValidationAt)
+                    }
                     ShellValidationStampText(date: self.lastValidationAt)
                 }
             }
