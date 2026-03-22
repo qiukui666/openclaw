@@ -16,10 +16,10 @@ private func shellValidationStampText(_ date: Date?) -> String {
     return "\(relativeText) · \(absoluteText)"
 }
 
-private func shellValidationReport(_ date: Date?) -> String {
+private func shellValidationReport(source: String, date: Date?) -> String {
     let status = (date == nil) ? "未打点" : "已打点"
     let stamp = shellValidationStampText(date)
-    return "主路径验收状态：\(status)\n时间：\(stamp)"
+    return "页面来源：\(source)\n主路径验收状态：\(status)\n时间：\(stamp)"
 }
 
 private struct ShellValidationStampText: View {
@@ -267,6 +267,7 @@ private struct ShellSessionItem: Identifiable {
 private struct ShellSessionDetailPlaceholderView: View {
     let session: ShellSessionItem
     let lastValidationAt: Date?
+    @State private var copyFeedback: String? = nil
 
     var body: some View {
         ZStack {
@@ -308,6 +309,29 @@ private struct ShellSessionDetailPlaceholderView: View {
                             }
                             ShellValidationStampText(date: self.lastValidationAt)
                         }
+                    }
+
+                    ShellCard {
+                        ShellSectionTitle(title: "验收结果导出", detail: "详情页")
+                        Button(action: {
+                            UIPasteboard.general.string = shellValidationReport(source: "会话详情", date: self.lastValidationAt)
+                            self.copyFeedback = "已复制到剪贴板"
+                        }) {
+                            HStack {
+                                Label("复制验收结果", systemImage: "doc.on.doc.fill")
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .foregroundStyle(.black)
+                            .background(.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text(self.copyFeedback ?? "复制内容含页面来源、状态、时间")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.72))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -414,7 +438,7 @@ private struct ShellHomeView: View {
             ShellCard {
                 ShellSectionTitle(title: "验收结果导出", detail: "新增")
                 Button(action: {
-                    UIPasteboard.general.string = shellValidationReport(self.lastValidationAt)
+                    UIPasteboard.general.string = shellValidationReport(source: "概览", date: self.lastValidationAt)
                     self.copyFeedback = "已复制到剪贴板"
                 }) {
                     HStack {
@@ -446,6 +470,7 @@ private struct ShellHomeView: View {
 
 private struct ShellSessionsView: View {
     let lastValidationAt: Date?
+    @State private var copyFeedback: String? = nil
 
     private let rows: [ShellSessionItem] = [
         ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
@@ -487,6 +512,29 @@ private struct ShellSessionsView: View {
                     }
                     ShellValidationStampText(date: self.lastValidationAt)
                 }
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "验收结果导出", detail: "会话页")
+                Button(action: {
+                    UIPasteboard.general.string = shellValidationReport(source: "会话", date: self.lastValidationAt)
+                    self.copyFeedback = "已复制到剪贴板"
+                }) {
+                    HStack {
+                        Label("复制验收结果", systemImage: "doc.on.doc.fill")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(.black)
+                    .background(.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Text(self.copyFeedback ?? "复制内容含页面来源、状态、时间")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
             }
 
             ShellCard {
