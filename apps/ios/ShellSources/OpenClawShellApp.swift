@@ -16,10 +16,32 @@ private func shellValidationStampText(_ date: Date?) -> String {
     return "\(relativeText) · \(absoluteText)"
 }
 
-private func shellValidationReport(source: String, date: Date?) -> String {
+private func shellValidationReport(
+    source: String,
+    date: Date?,
+    historyCount: Int,
+    sessionTitle: String? = nil,
+    sessionId: String? = nil)
+    -> String
+{
     let status = (date == nil) ? "未打点" : "已打点"
     let stamp = shellValidationStampText(date)
-    return "页面来源：\(source)\n主路径验收状态：\(status)\n时间：\(stamp)"
+
+    var lines = [
+        "页面来源：\(source)",
+        "主路径验收状态：\(status)",
+        "时间：\(stamp)",
+        "累计打点次数：\(historyCount)",
+    ]
+
+    if let sessionTitle {
+        lines.append("会话标题：\(sessionTitle)")
+    }
+    if let sessionId {
+        lines.append("会话ID：\(sessionId)")
+    }
+
+    return lines.joined(separator: "\n")
 }
 
 private struct ShellValidationStampText: View {
@@ -64,16 +86,17 @@ struct OpenClawShellApp: App {
 private struct ShellRootView: View {
     @State private var selectedTab: Int = 0
     @State private var lastValidationAt: Date? = nil
+    @State private var validationHistory: [Date] = []
 
     var body: some View {
         TabView(selection: self.$selectedTab) {
             ShellHomeView(onPrimaryAction: {
                 self.selectedTab = 1
-            }, lastValidationAt: self.$lastValidationAt)
+            }, lastValidationAt: self.$lastValidationAt, validationHistory: self.$validationHistory)
                 .tabItem { Label("概览", systemImage: "house.fill") }
                 .tag(0)
 
-            ShellSessionsView(lastValidationAt: self.lastValidationAt)
+            ShellSessionsView(lastValidationAt: self.lastValidationAt, validationHistory: self.validationHistory)
                 .tabItem { Label("会话", systemImage: "bubble.left.and.text.bubble.right.fill") }
                 .tag(1)
 
@@ -267,6 +290,7 @@ private struct ShellSessionItem: Identifiable {
 private struct ShellSessionDetailPlaceholderView: View {
     let session: ShellSessionItem
     let lastValidationAt: Date?
+    let validationHistoryCount: Int
     @State private var copyFeedback: String? = nil
 
     var body: some View {
@@ -314,7 +338,12 @@ private struct ShellSessionDetailPlaceholderView: View {
                     ShellCard {
                         ShellSectionTitle(title: "验收结果导出", detail: "详情页")
                         Button(action: {
-                            UIPasteboard.general.string = shellValidationReport(source: "会话详情", date: self.lastValidationAt)
+                            UIPasteboard.general.string = shellValidationReport(
+                                source: "会话详情",
+                                date: self.lastValidationAt,
+                                historyCount: self.validationHistoryCount,
+                                sessionTitle: self.session.title,
+                                sessionId: self.session.id)
                             self.copyFeedback = "已复制到剪贴板"
                         }) {
                             HStack {
@@ -363,6 +392,7 @@ private struct ShellSettingRow: View {
 private struct ShellHomeView: View {
     let onPrimaryAction: () -> Void
     @Binding var lastValidationAt: Date?
+    @Binding var validationHistory: [Date]
     @State private var copyFeedback: String? = nil
 
     var body: some View {
@@ -401,7 +431,9 @@ private struct ShellHomeView: View {
             ShellCard {
                 ShellSectionTitle(title: "主操作", detail: "可点击")
                 Button(action: {
-                    self.lastValidationAt = Date()
+                    let now = Date()
+                    self.lastValidationAt = now
+                    self.validationHistory.append(now)
                     self.onPrimaryAction()
                 }) {
                     HStack {
@@ -436,9 +468,25 @@ private struct ShellHomeView: View {
             }
 
             ShellCard {
+                ShellSectionTitle(title: "验收统计", detail: "新增")
+                HStack(spacing: 12) {
+                    ShellMetricCard(value: "\(self.validationHistory.count)", label: "累计打点")
+                    ShellMetricCard(value: (self.lastValidationAt == nil ? "未打点" : "已打点"), label: "当前状态")
+                }
+                if let first = self.validationHistory.first {
+                    Text("首次打点：\(shellValidationStampText(first))")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+            }
+
+            ShellCard {
                 ShellSectionTitle(title: "验收结果导出", detail: "新增")
                 Button(action: {
-                    UIPasteboard.general.string = shellValidationReport(source: "概览", date: self.lastValidationAt)
+                    UIPasteboard.general.string = shellValidationReport(
+                        source: "概览",
+                        date: self.lastValidationAt,
+                        historyCount: self.validationHistory.count)
                     self.copyFeedback = "已复制到剪贴板"
                 }) {
                     HStack {
@@ -470,6 +518,7 @@ private struct ShellHomeView: View {
 
 private struct ShellSessionsView: View {
     let lastValidationAt: Date?
+    let validationHistory: [Date]
     @State private var copyFeedback: String? = nil
 
     private let rows: [ShellSessionItem] = [
@@ -487,7 +536,7 @@ private struct ShellSessionsView: View {
                 ShellSectionTitle(title: "最近入口", detail: "只读")
                 VStack(spacing: 12) {
                     ForEach(self.rows) { row in
-                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt)) {
+                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt, validationHistoryCount: self.validationHistory.count)) {
                             ShellSessionRow(
                                 title: row.title,
                                 subtitle: row.subtitle,
@@ -517,7 +566,10 @@ private struct ShellSessionsView: View {
             ShellCard {
                 ShellSectionTitle(title: "验收结果导出", detail: "会话页")
                 Button(action: {
-                    UIPasteboard.general.string = shellValidationReport(source: "会话", date: self.lastValidationAt)
+                    UIPasteboard.general.string = shellValidationReport(
+                        source: "会话",
+                        date: self.lastValidationAt,
+                        historyCount: self.validationHistory.count)
                     self.copyFeedback = "已复制到剪贴板"
                 }) {
                     HStack {
