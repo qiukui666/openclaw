@@ -28,7 +28,9 @@ private func shellValidationReport(
     date: Date?,
     history: [Date],
     sessionTitle: String? = nil,
-    sessionId: String? = nil)
+    sessionId: String? = nil,
+    actionSummary: String? = nil,
+    actionAt: Date? = nil)
     -> String
 {
     let status = (date == nil) ? "未打点" : "已打点"
@@ -48,6 +50,12 @@ private func shellValidationReport(
     }
     if let sessionId {
         lines.append("会话ID：\(sessionId)")
+    }
+    if let actionSummary {
+        lines.append("最近动作结果：\(actionSummary)")
+    }
+    if let actionAt {
+        lines.append("动作时间：\(shellValidationStampText(actionAt))")
     }
 
     return lines.joined(separator: "\n")
@@ -248,6 +256,9 @@ private struct ShellSessionRow: View {
     let badge: String
     let symbol: String
     let showsDisclosure: Bool
+    let isRead: Bool
+    let isStarred: Bool
+    let isArchived: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -274,6 +285,26 @@ private struct ShellSessionRow: View {
                 Text(self.subtitle)
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
+
+                if self.isRead || self.isStarred || self.isArchived {
+                    HStack(spacing: 6) {
+                        if self.isRead {
+                            Text("已读")
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(.green)
+                        }
+                        if self.isStarred {
+                            Text("星标")
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(.yellow)
+                        }
+                        if self.isArchived {
+                            Text("已归档")
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
             }
 
             if self.showsDisclosure {
@@ -294,10 +325,15 @@ private struct ShellSessionItem: Identifiable {
     let subtitle: String
     let badge: String
     let symbol: String
+    var isRead: Bool = false
+    var isStarred: Bool = false
+    var isArchived: Bool = false
+    var lastActionSummary: String? = nil
+    var lastActionAt: Date? = nil
 }
 
 private struct ShellSessionDetailPlaceholderView: View {
-    let session: ShellSessionItem
+    @Binding var session: ShellSessionItem
     let lastValidationAt: Date?
     let validationHistory: [Date]
     @State private var copyFeedback: String? = nil
@@ -345,6 +381,42 @@ private struct ShellSessionDetailPlaceholderView: View {
                     }
 
                     ShellCard {
+                        ShellSectionTitle(title: "本地动作", detail: "可执行")
+                        HStack(spacing: 10) {
+                            Button(self.session.isRead ? "已读" : "标记已读") {
+                                self.session.isRead = true
+                                self.session.lastActionSummary = "标记已读"
+                                self.session.lastActionAt = Date()
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button(self.session.isStarred ? "取消星标" : "加星") {
+                                self.session.isStarred.toggle()
+                                self.session.lastActionSummary = self.session.isStarred ? "加星" : "取消星标"
+                                self.session.lastActionAt = Date()
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button(self.session.isArchived ? "取消归档" : "归档") {
+                                self.session.isArchived.toggle()
+                                self.session.lastActionSummary = self.session.isArchived ? "归档" : "取消归档"
+                                self.session.lastActionAt = Date()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        if let action = self.session.lastActionSummary, let at = self.session.lastActionAt {
+                            Text("最近动作：\(action) · \(shellValidationStampText(at))")
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.78))
+                        } else {
+                            Text("最近动作：暂无")
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
+
+                    ShellCard {
                         ShellSectionTitle(title: "验收结果导出", detail: "详情页")
                         Button(action: {
                             UIPasteboard.general.string = shellValidationReport(
@@ -352,7 +424,9 @@ private struct ShellSessionDetailPlaceholderView: View {
                                 date: self.lastValidationAt,
                                 history: self.validationHistory,
                                 sessionTitle: self.session.title,
-                                sessionId: self.session.id)
+                                sessionId: self.session.id,
+                                actionSummary: self.session.lastActionSummary,
+                                actionAt: self.session.lastActionAt)
                             self.copyFeedback = "已复制到剪贴板"
                         }) {
                             HStack {
@@ -533,7 +607,7 @@ private struct ShellSessionsView: View {
     let validationHistory: [Date]
     @State private var copyFeedback: String? = nil
 
-    private let rows: [ShellSessionItem] = [
+    @State private var rows: [ShellSessionItem] = [
         ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
         ShellSessionItem(id: "local", title: "本地会话", subtitle: "保留为安全静态样式，不发起真实连接。", badge: "静态", symbol: "desktopcomputer"),
         ShellSessionItem(id: "recent-tasks", title: "最近任务", subtitle: "后续可演化为任务 / 运行 / 工具结果入口。", badge: "预留", symbol: "hammer.fill")
@@ -547,14 +621,17 @@ private struct ShellSessionsView: View {
             ShellCard {
                 ShellSectionTitle(title: "最近入口", detail: "只读")
                 VStack(spacing: 12) {
-                    ForEach(self.rows) { row in
-                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt, validationHistory: self.validationHistory)) {
+                    ForEach(self.$rows) { $row in
+                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: $row, lastValidationAt: self.lastValidationAt, validationHistory: self.validationHistory)) {
                             ShellSessionRow(
                                 title: row.title,
                                 subtitle: row.subtitle,
                                 badge: row.badge,
                                 symbol: row.symbol,
-                                showsDisclosure: true)
+                                showsDisclosure: true,
+                                isRead: row.isRead,
+                                isStarred: row.isStarred,
+                                isArchived: row.isArchived)
                         }
                         .buttonStyle(.plain)
                     }
