@@ -16,22 +16,31 @@ private func shellValidationStampText(_ date: Date?) -> String {
     return "\(relativeText) · \(absoluteText)"
 }
 
+private func shellRecentHistoryText(_ history: [Date], limit: Int = 3) -> String {
+    guard !history.isEmpty else { return "最近打点：无" }
+    let recent = history.suffix(limit).reversed()
+    let body = recent.map { shellValidationStampText($0) }.joined(separator: " | ")
+    return "最近打点（最多\(limit)条）：\(body)"
+}
+
 private func shellValidationReport(
     source: String,
     date: Date?,
-    historyCount: Int,
+    history: [Date],
     sessionTitle: String? = nil,
     sessionId: String? = nil)
     -> String
 {
     let status = (date == nil) ? "未打点" : "已打点"
     let stamp = shellValidationStampText(date)
+    let historyCount = history.count
 
     var lines = [
         "页面来源：\(source)",
         "主路径验收状态：\(status)",
         "时间：\(stamp)",
         "累计打点次数：\(historyCount)",
+        shellRecentHistoryText(history),
     ]
 
     if let sessionTitle {
@@ -290,7 +299,7 @@ private struct ShellSessionItem: Identifiable {
 private struct ShellSessionDetailPlaceholderView: View {
     let session: ShellSessionItem
     let lastValidationAt: Date?
-    let validationHistoryCount: Int
+    let validationHistory: [Date]
     @State private var copyFeedback: String? = nil
 
     var body: some View {
@@ -341,7 +350,7 @@ private struct ShellSessionDetailPlaceholderView: View {
                             UIPasteboard.general.string = shellValidationReport(
                                 source: "会话详情",
                                 date: self.lastValidationAt,
-                                historyCount: self.validationHistoryCount,
+                                history: self.validationHistory,
                                 sessionTitle: self.session.title,
                                 sessionId: self.session.id)
                             self.copyFeedback = "已复制到剪贴板"
@@ -478,6 +487,9 @@ private struct ShellHomeView: View {
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(.white.opacity(0.72))
                 }
+                Text(shellRecentHistoryText(self.validationHistory))
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
             }
 
             ShellCard {
@@ -486,7 +498,7 @@ private struct ShellHomeView: View {
                     UIPasteboard.general.string = shellValidationReport(
                         source: "概览",
                         date: self.lastValidationAt,
-                        historyCount: self.validationHistory.count)
+                        history: self.validationHistory)
                     self.copyFeedback = "已复制到剪贴板"
                 }) {
                     HStack {
@@ -536,7 +548,7 @@ private struct ShellSessionsView: View {
                 ShellSectionTitle(title: "最近入口", detail: "只读")
                 VStack(spacing: 12) {
                     ForEach(self.rows) { row in
-                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt, validationHistoryCount: self.validationHistory.count)) {
+                        NavigationLink(destination: ShellSessionDetailPlaceholderView(session: row, lastValidationAt: self.lastValidationAt, validationHistory: self.validationHistory)) {
                             ShellSessionRow(
                                 title: row.title,
                                 subtitle: row.subtitle,
@@ -569,7 +581,7 @@ private struct ShellSessionsView: View {
                     UIPasteboard.general.string = shellValidationReport(
                         source: "会话",
                         date: self.lastValidationAt,
-                        historyCount: self.validationHistory.count)
+                        history: self.validationHistory)
                     self.copyFeedback = "已复制到剪贴板"
                 }) {
                     HStack {
