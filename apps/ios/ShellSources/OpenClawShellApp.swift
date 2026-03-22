@@ -613,6 +613,48 @@ private struct ShellSessionsView: View {
         ShellSessionItem(id: "recent-tasks", title: "最近任务", subtitle: "后续可演化为任务 / 运行 / 工具结果入口。", badge: "预留", symbol: "hammer.fill")
     ]
 
+    private func exportCurrentSessionReport() -> String {
+        let target = self.rows.first ?? ShellSessionItem(
+            id: "none",
+            title: "会话",
+            subtitle: "无数据",
+            badge: "占位",
+            symbol: "bubble.left")
+
+        return shellValidationReport(
+            source: "会话",
+            date: self.lastValidationAt,
+            history: self.validationHistory,
+            sessionTitle: target.title,
+            sessionId: target.id,
+            actionSummary: target.lastActionSummary,
+            actionAt: target.lastActionAt)
+    }
+
+    private func exportAllSessionsReport() -> String {
+        let header = shellValidationReport(
+            source: "会话-全量摘要",
+            date: self.lastValidationAt,
+            history: self.validationHistory)
+
+        let body = self.rows.map { row in
+            let statusTags = [
+                row.isRead ? "已读" : nil,
+                row.isStarred ? "星标" : nil,
+                row.isArchived ? "归档" : nil,
+            ]
+            .compactMap { $0 }
+            .joined(separator: ",")
+
+            let statusText = statusTags.isEmpty ? "无" : statusTags
+            let actionText = row.lastActionSummary ?? "无"
+            return "- \(row.title) [\(row.badge)] id=\(row.id) 状态=\(statusText) 最近动作=\(actionText)"
+        }
+        .joined(separator: "\n")
+
+        return header + "\n\n会话列表：\n" + body
+    }
+
     var body: some View {
         ShellScaffold(
             title: "会话",
@@ -654,26 +696,41 @@ private struct ShellSessionsView: View {
 
             ShellCard {
                 ShellSectionTitle(title: "验收结果导出", detail: "会话页")
-                Button(action: {
-                    UIPasteboard.general.string = shellValidationReport(
-                        source: "会话",
-                        date: self.lastValidationAt,
-                        history: self.validationHistory)
-                    self.copyFeedback = "已复制到剪贴板"
-                }) {
-                    HStack {
-                        Label("复制验收结果", systemImage: "doc.on.doc.fill")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        Spacer(minLength: 0)
+                VStack(spacing: 10) {
+                    Button(action: {
+                        UIPasteboard.general.string = self.exportCurrentSessionReport()
+                        self.copyFeedback = "已复制当前会话验收结果"
+                    }) {
+                        HStack {
+                            Label("复制当前会话结果", systemImage: "doc.on.doc.fill")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(.black)
+                        .background(.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .foregroundStyle(.black)
-                    .background(.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Text(self.copyFeedback ?? "复制内容含页面来源、状态、时间")
+                    Button(action: {
+                        UIPasteboard.general.string = self.exportAllSessionsReport()
+                        self.copyFeedback = "已复制全部会话摘要"
+                    }) {
+                        HStack {
+                            Label("复制全部会话摘要", systemImage: "square.stack.3d.up.fill")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(.black)
+                        .background(.cyan, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Text(self.copyFeedback ?? "支持导出：当前会话 + 全会话摘要")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.white.opacity(0.72))
             }
