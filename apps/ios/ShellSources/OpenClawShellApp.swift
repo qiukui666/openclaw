@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private func shellValidationStampText(_ date: Date?) -> String {
     guard let date else { return "尚未记录" }
@@ -13,6 +14,12 @@ private func shellValidationStampText(_ date: Date?) -> String {
     let relativeText = relativeFormatter.localizedString(for: date, relativeTo: Date())
     let absoluteText = absoluteFormatter.string(from: date)
     return "\(relativeText) · \(absoluteText)"
+}
+
+private func shellValidationReport(_ date: Date?) -> String {
+    let status = (date == nil) ? "未打点" : "已打点"
+    let stamp = shellValidationStampText(date)
+    return "主路径验收状态：\(status)\n时间：\(stamp)"
 }
 
 private struct ShellValidationStampText: View {
@@ -332,6 +339,7 @@ private struct ShellSettingRow: View {
 private struct ShellHomeView: View {
     let onPrimaryAction: () -> Void
     @Binding var lastValidationAt: Date?
+    @State private var copyFeedback: String? = nil
 
     var body: some View {
         ShellScaffold(
@@ -401,6 +409,29 @@ private struct ShellHomeView: View {
                     }
                     ShellValidationStampText(date: self.lastValidationAt)
                 }
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "验收结果导出", detail: "新增")
+                Button(action: {
+                    UIPasteboard.general.string = shellValidationReport(self.lastValidationAt)
+                    self.copyFeedback = "已复制到剪贴板"
+                }) {
+                    HStack {
+                        Label("复制验收结果", systemImage: "doc.on.doc.fill")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(.black)
+                    .background(.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Text(self.copyFeedback ?? "用于一键回传当前“状态+时间”文本")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
             }
 
             ShellCard {
