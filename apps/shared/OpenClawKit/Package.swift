@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "OpenClawKit",
     platforms: [
-        .iOS(.v18),
+        .iOS(.v16),
         .macOS(.v15),
     ],
     products: [
