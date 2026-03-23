@@ -319,7 +319,7 @@ private struct ShellSessionRow: View {
     }
 }
 
-private struct ShellSessionItem: Identifiable {
+private struct ShellSessionItem: Identifiable, Codable {
     let id: String
     let title: String
     let subtitle: String
@@ -330,6 +330,18 @@ private struct ShellSessionItem: Identifiable {
     var isArchived: Bool = false
     var lastActionSummary: String? = nil
     var lastActionAt: Date? = nil
+
+    static func defaults() -> [ShellSessionItem] {
+        [
+            ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
+            ShellSessionItem(id: "local", title: "本地会话", subtitle: "保留为安全静态样式，不发起真实连接。", badge: "静态", symbol: "desktopcomputer"),
+            ShellSessionItem(id: "recent-tasks", title: "最近任务", subtitle: "后续可演化为任务 / 运行 / 工具结果入口。", badge: "预留", symbol: "hammer.fill")
+        ]
+    }
+}
+
+private extension Notification.Name {
+    static let shellResetSessionState = Notification.Name("openclaw.shell.resetSessionState")
 }
 
 private struct ShellSessionDetailPlaceholderView: View {
@@ -607,11 +619,31 @@ private struct ShellSessionsView: View {
     let validationHistory: [Date]
     @State private var copyFeedback: String? = nil
 
-    @State private var rows: [ShellSessionItem] = [
-        ShellSessionItem(id: "boss", title: "老板", subtitle: "主入口会话占位。下一轮可从这里往真实消息列表骨架推进。", badge: "主会话", symbol: "person.crop.circle.fill"),
-        ShellSessionItem(id: "local", title: "本地会话", subtitle: "保留为安全静态样式，不发起真实连接。", badge: "静态", symbol: "desktopcomputer"),
-        ShellSessionItem(id: "recent-tasks", title: "最近任务", subtitle: "后续可演化为任务 / 运行 / 工具结果入口。", badge: "预留", symbol: "hammer.fill")
-    ]
+    @State private var rows: [ShellSessionItem] = ShellSessionItem.defaults()
+
+    private static let storageKey = "openclaw.shell.sessions.v1"
+
+    private func loadPersistedRows() {
+        guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
+              let decoded = try? JSONDecoder().decode([ShellSessionItem].self, from: data),
+              !decoded.isEmpty
+        else {
+            self.rows = ShellSessionItem.defaults()
+            return
+        }
+        self.rows = decoded
+    }
+
+    private func persistRows(_ rows: [ShellSessionItem]) {
+        guard let data = try? JSONEncoder().encode(rows) else { return }
+        UserDefaults.standard.set(data, forKey: Self.storageKey)
+    }
+
+    private func resetRows() {
+        UserDefaults.standard.removeObject(forKey: Self.storageKey)
+        self.rows = ShellSessionItem.defaults()
+        self.copyFeedback = "已重置会话状态"
+    }
 
     private func exportCurrentSessionReport() -> String {
         let target = self.rows.first ?? ShellSessionItem(
@@ -648,7 +680,8 @@ private struct ShellSessionsView: View {
 
             let statusText = statusTags.isEmpty ? "无" : statusTags
             let actionText = row.lastActionSummary ?? "无"
-            return "- \(row.title) [\(row.badge)] id=\(row.id) 状态=\(statusText) 最近动作=\(actionText)"
+            let actionAtText = shellValidationStampText(row.lastActionAt)
+            return "- \(row.title) [\(row.badge)] id=\(row.id) 状态=\(statusText) 最近动作=\(actionText) 动作时间=\(actionAtText)"
         }
         .joined(separator: "\n")
 
@@ -746,6 +779,15 @@ private struct ShellSessionsView: View {
                 .foregroundStyle(.white.opacity(0.82))
             }
         }
+        .onAppear {
+            self.loadPersistedRows()
+        }
+        .onChange(of: self.rows) { newValue in
+            self.persistRows(newValue)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .shellResetSessionState)) { _ in
+            self.resetRows()
+        }
     }
 }
 
@@ -773,6 +815,28 @@ private struct ShellSettingsView: View {
                     }
                 }
                 .tint(.cyan)
+            }
+
+            ShellCard {
+                ShellSectionTitle(title: "会话状态维护", detail: "可恢复")
+                Button(action: {
+                    NotificationCenter.default.post(name: .shellResetSessionState, object: nil)
+                }) {
+                    HStack {
+                        Label("重置本地会话状态", systemImage: "arrow.counterclockwise.circle.fill")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(.black)
+                    .background(.orange, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Text("用于清理已读/星标/归档等本地状态，恢复默认列表")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
             }
 
             ShellCard {
