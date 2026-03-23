@@ -319,7 +319,7 @@ private struct ShellSessionRow: View {
     }
 }
 
-private struct ShellSessionItem: Identifiable, Codable {
+private struct ShellSessionItem: Identifiable, Codable, Equatable {
     let id: String
     let title: String
     let subtitle: String
