@@ -95,7 +95,7 @@ private struct ShellValidationStatusPill: View {
 struct OpenClawShellApp: App {
     var body: some Scene {
         WindowGroup {
-            ShellRootView()
+            ChatWindowView()
         }
     }
 }
@@ -508,7 +508,7 @@ private struct ShellHomeView: View {
                 HStack(spacing: 12) {
                     ShellMetricCard(value: "3", label: "主标签页")
                     ShellMetricCard(value: "0", label: "后台任务")
-                    ShellMetricCard(value: "Safe", label: "自动能力")
+                    ShellMetricCard(value: "安全", label: "自动能力")
                 }
             }
 
@@ -606,7 +606,7 @@ private struct ShellHomeView: View {
 
             ShellCard {
                 ShellSectionTitle(title: "仍然刻意不碰的部分", detail: "为了先保稳定")
-                Text("自动连 Gateway、Push / APNs、Live Activities、后台任务、Share / Watch / Widget 继续全部关闭。这一版目标不是功能全，而是先把真正的前台主界面骨架做稳。")
+                Text("自动连接网关、推送 / APNs、实时活动、后台任务、分享 / 手表 / 小组件继续全部关闭。这一版目标不是功能全，而是先把真正的前台主界面骨架做稳。")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.white.opacity(0.76))
             }
@@ -842,10 +842,10 @@ private struct ShellSettingsView: View {
             ShellCard {
                 ShellSectionTitle(title: "当前构建策略", detail: "安全优先")
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("不注册 Push / APNs", systemImage: "xmark.circle")
+                    Label("不注册推送 / APNs", systemImage: "xmark.circle")
                     Label("不启用后台任务", systemImage: "xmark.circle")
-                    Label("不自动发现或连接 Gateway", systemImage: "xmark.circle")
-                    Label("不加载 Share / Watch / Widget 扩展", systemImage: "xmark.circle")
+                    Label("不自动发现或连接网关", systemImage: "xmark.circle")
+                    Label("不加载分享 / 手表 / 小组件扩展", systemImage: "xmark.circle")
                 }
                 .font(.system(.footnote, design: .rounded))
                 .foregroundStyle(.white.opacity(0.8))
